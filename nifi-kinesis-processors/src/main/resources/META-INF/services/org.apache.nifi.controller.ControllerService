@@ -12,5 +12,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-org.swiftshire.nifi.processors.kinesis.consumer.GetKinesisStream
-org.swiftshire.nifi.processors.kinesis.producer.PutKinesisStream
+org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService

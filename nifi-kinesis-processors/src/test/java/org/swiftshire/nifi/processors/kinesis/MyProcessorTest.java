@@ -17,7 +17,6 @@
 package org.swiftshire.nifi.processors.kinesis;
 
 import org.apache.nifi.util.TestRunner;
-import org.apache.nifi.util.TestRunners;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -28,7 +27,7 @@ public class MyProcessorTest {
 
     @Before
     public void init() {
-        testRunner = TestRunners.newTestRunner(MyProcessor.class);
+        // testRunner = TestRunners.newTestRunner(KinesisRecordProcessor.class);
     }
 
     @Test

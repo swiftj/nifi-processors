@@ -3,9 +3,14 @@
 *.iml
 *.iws
 
+# Node
+package.json
+
 # Mac
 .DS_Store
 
 # Maven
 log/
 target/
+node/
+etc/
