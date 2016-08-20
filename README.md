@@ -18,5 +18,5 @@ This NAR archive file must be copied to the Nifi installation directory in the `
 or restart Apache Nifi and these two processors will be loaded. If loaded successfully, one can add them to the data
 flow canvas in Apache Nifi:
 
-![Nifi Canvas Screenshot](https://github.com/swiftj/nifi-processors/tree/master/images/kinesis-processors.png)
+![Nifi Canvas Screenshot](https://github.com/swiftj/nifi-processors/blob/master/images/kinesis-processors.png)
     
