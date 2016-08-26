@@ -14,25 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.swiftshire.nifi.processors.kinesis;
+package org.swiftshire.nifi.processors.kinesis.consumer;
 
-import org.apache.nifi.util.TestRunner;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
+import static org.junit.Assert.assertSame;
 
-public class MyProcessorTest {
-
-    private TestRunner testRunner;
+public class KinesisRecordProcessorFactoryTest {
+    protected KinesisRecordProcessorFactory factory;
+    protected RecordsHandler mockDelegate;
 
     @Before
-    public void init() {
-        // testRunner = TestRunners.newTestRunner(KinesisRecordProcessor.class);
+    public void setUp() throws Exception {
+        mockDelegate = Mockito.mock(RecordsHandler.class);
+        factory = new KinesisRecordProcessorFactory(mockDelegate);
     }
 
     @Test
-    public void testProcessor() {
-
+    public void testKinesisRecordProcessorFactory() {
+        KinesisRecordProcessor processor = (KinesisRecordProcessor) factory.createProcessor();
+        assertSame(mockDelegate, processor.getDelegate());
     }
-
 }
