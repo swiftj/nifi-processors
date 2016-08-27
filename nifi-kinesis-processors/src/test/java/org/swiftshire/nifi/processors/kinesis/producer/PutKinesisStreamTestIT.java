@@ -16,22 +16,21 @@
  */
 package org.swiftshire.nifi.processors.kinesis.producer;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static org.junit.Assert.assertTrue;
+import static org.swiftshire.nifi.processors.kinesis.KinesisPropertyDescriptors.KINESIS_STREAM_NAME;
 import static org.swiftshire.nifi.processors.kinesis.producer.PutKinesisStream.*;
-import static org.swiftshire.nifi.processors.kinesis.KinesisPropertyDescriptors.*;
 
 /**
  * Ensure that the Kinesis stream exists before running the test
@@ -47,7 +46,7 @@ public class PutKinesisStreamTestIT {
         runner = TestRunners.newTestRunner(PutKinesisStream.class);
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
-        runner.setProperty(serviceImpl, CREDENTIALS_FILE, "aws_test_credentials.properties");
+        runner.setProperty(serviceImpl, CREDENTIALS_FILE, "mock-aws-credentials.properties");
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);

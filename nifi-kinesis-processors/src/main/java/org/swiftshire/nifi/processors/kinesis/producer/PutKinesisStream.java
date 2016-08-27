@@ -30,6 +30,7 @@ import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnShutdown;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderService;
@@ -163,35 +164,35 @@ public class PutKinesisStream extends AbstractKinesisProducerProcessor {
 
         KinesisProducerConfiguration config = new KinesisProducerConfiguration();
 
-        config.setRegion(context.getProperty(PutKinesisStream.REGION).getValue());
+        config.setRegion(context.getProperty(REGION).getValue());
 
         final AWSCredentialsProviderService awsCredentialsProviderService =
-                context.getProperty(PutKinesisStream.AWS_CREDENTIALS_PROVIDER_SERVICE).asControllerService(AWSCredentialsProviderService.class);
+                context.getProperty(AWS_CREDENTIALS_PROVIDER_SERVICE).asControllerService(AWSCredentialsProviderService.class);
 
         config.setCredentialsProvider(awsCredentialsProviderService.getCredentialsProvider());
 
-        config.setMaxConnections(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_MAX_CONNECTIONS_TO_BACKEND).asInteger());
-        config.setMinConnections(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_MIN_CONNECTIONS_TO_BACKEND).asInteger());
+        config.setMaxConnections(context.getProperty(KINESIS_PRODUCER_MAX_CONNECTIONS_TO_BACKEND).asInteger());
+        config.setMinConnections(context.getProperty(KINESIS_PRODUCER_MIN_CONNECTIONS_TO_BACKEND).asInteger());
 
-        config.setRequestTimeout(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_REQUEST_TIMEOUT).asInteger());
-        config.setConnectTimeout(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_TLS_CONNECT_TIMEOUT).asLong());
+        config.setRequestTimeout(context.getProperty(KINESIS_PRODUCER_REQUEST_TIMEOUT).asInteger());
+        config.setConnectTimeout(context.getProperty(KINESIS_PRODUCER_TLS_CONNECT_TIMEOUT).asLong());
 
-        config.setRecordMaxBufferedTime(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_MAX_BUFFER_INTERVAL).asInteger());
-        config.setRateLimit(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_MAX_PUT_RATE).asInteger());
+        config.setRecordMaxBufferedTime(context.getProperty(KINESIS_PRODUCER_MAX_BUFFER_INTERVAL).asInteger());
+        config.setRateLimit(context.getProperty(KINESIS_PRODUCER_MAX_PUT_RATE).asInteger());
 
-        config.setAggregationEnabled(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_ENABLED).asBoolean());
-        config.setAggregationMaxCount(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_MAX_COUNT).asLong());
-        config.setAggregationMaxSize(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_MAX_SIZE).asInteger());
+        config.setAggregationEnabled(context.getProperty(KINESIS_PRODUCER_AGGREGATION_ENABLED).asBoolean());
+        config.setAggregationMaxCount(context.getProperty(KINESIS_PRODUCER_AGGREGATION_MAX_COUNT).asLong());
+        config.setAggregationMaxSize(context.getProperty(KINESIS_PRODUCER_AGGREGATION_MAX_SIZE).asInteger());
 
-        config.setCollectionMaxCount(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_COLLECTION_MAX_COUNT).asInteger());
-        config.setCollectionMaxSize(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_COLLECTION_MAX_SIZE).asInteger());
+        config.setCollectionMaxCount(context.getProperty(KINESIS_PRODUCER_COLLECTION_MAX_COUNT).asInteger());
+        config.setCollectionMaxSize(context.getProperty(KINESIS_PRODUCER_COLLECTION_MAX_SIZE).asInteger());
 
-        config.setFailIfThrottled(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_FAIL_IF_THROTTLED).asBoolean());
+        config.setFailIfThrottled(context.getProperty(KINESIS_PRODUCER_FAIL_IF_THROTTLED).asBoolean());
 
         config.setMetricsCredentialsProvider(awsCredentialsProviderService.getCredentialsProvider());
-        config.setMetricsNamespace(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_METRICS_NAMESPACE).getValue());
-        config.setMetricsGranularity(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_METRICS_GRANULARITY).getValue());
-        config.setMetricsLevel(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_METRICS_LEVEL).getValue());
+        config.setMetricsNamespace(context.getProperty(KINESIS_PRODUCER_METRICS_NAMESPACE).getValue());
+        config.setMetricsGranularity(context.getProperty(KINESIS_PRODUCER_METRICS_GRANULARITY).getValue());
+        config.setMetricsLevel(context.getProperty(KINESIS_PRODUCER_METRICS_LEVEL).getValue());
 
         producer = makeProducer(config);
 
@@ -212,7 +213,11 @@ public class PutKinesisStream extends AbstractKinesisProducerProcessor {
      */
     @Override
     protected AmazonKinesisClient createClient(ProcessContext context, AWSCredentials credentials, ClientConfiguration config) {
-        getLogger().info("Creating Amazon Kinesis Client using AWS credentials provider (deprecated)");
+        final ComponentLog log = getLogger();
+
+        if (log.isInfoEnabled()) {
+            log.info("Creating Amazon Kinesis Client using AWS credentials provider (deprecated)");
+        }
 
         return new AmazonKinesisClient(credentials, config);
     }
@@ -222,7 +227,11 @@ public class PutKinesisStream extends AbstractKinesisProducerProcessor {
      */
     @Override
     protected AmazonKinesisClient createClient(ProcessContext context, AWSCredentialsProvider credentialsProvider, ClientConfiguration config) {
-        getLogger().info("Creating Amazon Kinesis Client using AWS credentials provider");
+        final ComponentLog log = getLogger();
+
+        if (log.isInfoEnabled()) {
+            log.info("Creating Amazon Kinesis Client using AWS credentials provider");
+        }
 
         return new AmazonKinesisClient(credentialsProvider, config);
     }
@@ -241,6 +250,7 @@ public class PutKinesisStream extends AbstractKinesisProducerProcessor {
         }
 
         final String stream = context.getProperty(KINESIS_STREAM_NAME).getValue();
+        final ComponentLog log = getLogger();
 
         try {
             List<Future<UserRecordResult>> addRecordFutures = new ArrayList<>();
@@ -251,7 +261,7 @@ public class PutKinesisStream extends AbstractKinesisProducerProcessor {
 
                 session.exportTo(flowFile1, baos);
 
-                String partitionKey = context.getProperty(PutKinesisStream.KINESIS_PARTITION_KEY)
+                String partitionKey = context.getProperty(KINESIS_PARTITION_KEY)
                         .evaluateAttributeExpressions(flowFile1).getValue();
 
                 if (StringUtils.isBlank(partitionKey)) {
@@ -283,8 +293,8 @@ public class PutKinesisStream extends AbstractKinesisProducerProcessor {
                         userRecordResult = urfe.getResult();
                     }
                     else {
-                        session.transfer(flowFile, PutKinesisStream.REL_FAILURE);
-                        getLogger().error("Failed to publish to Kinesis {} record {}", new Object[]{stream, flowFile});
+                        session.transfer(flowFile, REL_FAILURE);
+                        log.error("Failed to publish to Kinesis {} record {}", new Object[]{stream, flowFile});
 
                         continue;
                     }
@@ -303,25 +313,29 @@ public class PutKinesisStream extends AbstractKinesisProducerProcessor {
             }
 
             if (failedFlowFiles.size() > 0) {
-                session.transfer(failedFlowFiles, PutKinesisStream.REL_FAILURE);
-                getLogger().error("Failed to publish to {} records to Kinesis {}", new Object[]{failedFlowFiles.size(), stream});
+                session.transfer(failedFlowFiles, REL_FAILURE);
+                log.error("Failed to publish to {} records to Kinesis {}", new Object[]{failedFlowFiles.size(), stream});
             }
 
             if (successfulFlowFiles.size() > 0) {
                 session.transfer(successfulFlowFiles, REL_SUCCESS);
-                getLogger().info("Successfully published {} records to Kinesis {}", new Object[]{successfulFlowFiles, stream});
+
+                if (log.isInfoEnabled()) {
+                    log.info("Successfully published {} records to Kinesis {}", new Object[]{successfulFlowFiles, stream});
+                }
             }
 
         }
         catch (final Exception ex) {
-            getLogger().error("Failed to publish to Kinesis {} with exception {}", new Object[]{stream, ex});
+            log.error("Failed to publish to Kinesis {} with exception {}", new Object[]{stream, ex});
             session.transfer(flowFiles, REL_FAILURE);
             context.yield();
         }
     }
 
     /**
-     * Helper method to create attributes form result
+     * Helper method to create attributes from {@link com.amazonaws.services.kinesis.producer.UserRecordResult result}
+     * object.
      *
      * @param result UserRecordResult
      * @return Map of attributes

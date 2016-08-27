@@ -70,7 +70,7 @@ public class GetKinesisStreamTestIT {
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
 
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
-        runner.setProperty(serviceImpl, CREDENTIALS_FILE, "aws_test_credentials.properties");
+        runner.setProperty(serviceImpl, CREDENTIALS_FILE, "mock-aws-credentials.properties");
         runner.enableControllerService(serviceImpl);
         runner.assertValid(serviceImpl);
         runner.setProperty(AWS_CREDENTIALS_PROVIDER_SERVICE, "awsCredentialsProvider");
