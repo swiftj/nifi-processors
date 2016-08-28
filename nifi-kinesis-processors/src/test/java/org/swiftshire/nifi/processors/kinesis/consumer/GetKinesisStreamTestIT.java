@@ -25,6 +25,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.clientlibrary.types.UserRecord;
 import com.amazonaws.services.kinesis.model.Record;
 
@@ -37,6 +40,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.mock;
+
 
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.types.ExtendedSequenceNumber;
@@ -51,26 +56,81 @@ import static org.swiftshire.nifi.processors.kinesis.consumer.AbstractKinesisCon
 import static org.swiftshire.nifi.processors.kinesis.consumer.GetKinesisStream.*;
 
 /**
- * Integration test for the GetKinesisStream processor. Ensure that the Kinesis stream exists before running this test
+ * Integration test for the {@link GetKinesisStream} Apache Nifi Processor that uses the standalone
+ * <a href="https://github.com/mhart/kinesalite">Kinesalite</a> testing framework.
+ *
+ * <p>Ensure that the Kinesalite system is up and running first and the matching stream exists <b>before</b>
+ * running this test. For example, run Kinesalite locally from the command line...<p/>
+ * <code>
+ *  $ kinesalite --ssl
+ * </code>
+ * <p>Next, use the AWS command line tool to connect to the Kinesalite server and create the Kinesis stream
+ * this integration test uses for testing purposes...
+ * <code>
+ *  $ aws --no-verify-ssl kinesis create-stream --stream-name kinesalite --shard-count 1 --endpoint-url 'https://localhost:4567'
+ *  $ aws --no-verify-ssl kinesis list-streams --endpoint-url 'https://localhost:4567'
+ *  {
+ *      "StreamNames": [
+ *          "kinesalite"
+ *      ]
+ *  }
+ * </code>
+ * <p>This is all that's needed to execute this integration test.
+ *
+ * @since 1.0
  */
 public class GetKinesisStreamTestIT {
+    /**
+     * Path to the project provided AWS credentials to test with.
+     */
+    private static final String AWS_CREDS_PROPERTIES_FILE =
+            "nifi-kinesis-processors/src/test/resources/mock-aws-credentials.properties";
 
+    /**
+     * Name of the AWS Kinesis Stream that we're going to test with
+     */
+    private static final String TEST_STREAM_NAME = "kinesalite";
+
+    /**
+     *
+     */
     private TestRunner runner;
+
+    /**
+     *
+     */
     private GetKinesisStream getKinesis;
+
+    /**
+     *
+     */
     private IRecordProcessorCheckpointer mockRecordProcessorCheckPointer;
-    private static final String kinesisStream = "ntestkinesis";
 
     @Before
     public void setUp() throws Exception {
+        // Object under test
+        getKinesis = new GetKinesisStream() {
+            @Override
+            protected Worker makeWorker(KinesisClientLibConfiguration config,
+                                        KinesisRecordProcessorFactory kinesisRecordProcessorFactory) {
+
+                config.withKinesisEndpoint("127.0.0.1:4567")
+                      .withRegionName("us-east-1")
+                      .withUserAgent("testapplication")
+                      .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON);
+
+                return mock(Worker.class);
+            }
+        };
+
         mockRecordProcessorCheckPointer = Mockito.mock(IRecordProcessorCheckpointer.class);
 
-        getKinesis = new GetKinesisStream();
         runner = TestRunners.newTestRunner(getKinesis);
 
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
 
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
-        runner.setProperty(serviceImpl, CREDENTIALS_FILE, "mock-aws-credentials.properties");
+        runner.setProperty(serviceImpl, CREDENTIALS_FILE, AWS_CREDS_PROPERTIES_FILE);
         runner.enableControllerService(serviceImpl);
         runner.assertValid(serviceImpl);
         runner.setProperty(AWS_CREDENTIALS_PROVIDER_SERVICE, "awsCredentialsProvider");
@@ -88,7 +148,7 @@ public class GetKinesisStreamTestIT {
      */
     @Test
     public void testGetKinesisInvokeOnTriggerIgnored() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.setProperty(KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -104,7 +164,7 @@ public class GetKinesisStreamTestIT {
      */
     @Test
     public void testGetKinesisInvokeProcessRecordsWithOneRecord() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.setProperty(KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -152,7 +212,7 @@ public class GetKinesisStreamTestIT {
 
     @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecord() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.setProperty(KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -212,7 +272,7 @@ public class GetKinesisStreamTestIT {
 
     @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithSecondRecordDataNull() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.setProperty(KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -262,7 +322,7 @@ public class GetKinesisStreamTestIT {
 
     @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithFirstRecordDataNull() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.setProperty(KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -301,7 +361,7 @@ public class GetKinesisStreamTestIT {
 
     @Test
     public void testGetKinesisShutdown() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.setProperty(KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
