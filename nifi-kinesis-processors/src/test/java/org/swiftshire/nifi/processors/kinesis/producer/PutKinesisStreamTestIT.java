@@ -16,6 +16,8 @@
  */
 package org.swiftshire.nifi.processors.kinesis.producer;
 
+import com.amazonaws.services.kinesis.producer.KinesisProducer;
+import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
@@ -33,20 +35,75 @@ import static org.swiftshire.nifi.processors.kinesis.KinesisPropertyDescriptors.
 import static org.swiftshire.nifi.processors.kinesis.producer.PutKinesisStream.*;
 
 /**
- * Ensure that the Kinesis stream exists before running the test
+ * Integration test for the {@link PutKinesisStream} Apache Nifi Processor that uses the standalone
+ * <a href="https://github.com/mhart/kinesalite">Kinesalite</a> testing framework.
+ *
+ * <p>Ensure that the Kinesalite system is up and running first and the matching stream exists <b>before</b>
+ * running this test. For example, run Kinesalite locally from the command line...<p/>
+ * <code>
+ *  $ kinesalite --ssl
+ * </code>
+ * <p>Next, use the AWS command line tool to connect to the Kinesalite server and create the Kinesis stream
+ * this integration test uses for testing purposes...
+ * <code>
+ *  $ aws --no-verify-ssl kinesis create-stream --stream-name kinesalite --shard-count 1 --endpoint-url 'https://localhost:4567'
+ *  $ aws --no-verify-ssl kinesis list-streams --endpoint-url 'https://localhost:4567'
+ *  {
+ *      "StreamNames": [
+ *          "kinesalite"
+ *      ]
+ *  }
+ * </code>
+ * <p>This is all that's needed to execute this integration test.
+ *
+ * @since 1.0
  */
 public class PutKinesisStreamTestIT {
+    /**
+     * Path to the project provided AWS credentials to test with.
+     */
+    private static final String AWS_CREDS_PROPERTIES_FILE =
+            "nifi-kinesis-processors/src/test/resources/mock-aws-credentials.properties";
 
+    /**
+     * Name of the AWS Kinesis Stream that we're going to test with
+     */
+    private static final String TEST_STREAM_NAME = "kinesalite";
+
+    /**
+     * Apache Nifi test runner we use to execute the test.
+     */
     private TestRunner runner;
 
-    private static final String kinesisStream = "ntestkinesis";
-
+    /**
+     * Setup this integration test so we can connect to the locally running Kinesalite service.
+     *
+     * @throws Exception
+     */
     @Before
     public void setUp() throws Exception {
-        runner = TestRunners.newTestRunner(PutKinesisStream.class);
+        // Object under test
+        final PutKinesisStream processor = new PutKinesisStream() {
+            @Override
+            protected KinesisProducer makeProducer(KinesisProducerConfiguration config) {
+                // We use Kinesalite for our IT testing so we need to explicitly
+                // set these configuration items so our test works with it running
+                // locally. We use all Kinesalite's default settings except for SSL
+                // which must be turned on in Kinesalite because the KPL forces it.
+                config.setCustomEndpoint("127.0.0.1");
+                config.setPort(4567);
+                config.setVerifyCertificate(false); // Allow self-signed certs
+                config.setRegion("us-east-1");
+
+                return new KinesisProducer(config);
+            }
+        };
+
+        runner = TestRunners.newTestRunner(processor);
+
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
-        runner.setProperty(serviceImpl, CREDENTIALS_FILE, "mock-aws-credentials.properties");
+        runner.setProperty(serviceImpl, CREDENTIALS_FILE, AWS_CREDS_PROPERTIES_FILE);
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);
@@ -60,7 +117,7 @@ public class PutKinesisStreamTestIT {
 
     @Test
     public void testIntegrationSuccessWithPartitionKey() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.assertValid();
         runner.setProperty(KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
@@ -84,7 +141,7 @@ public class PutKinesisStreamTestIT {
 
     @Test
     public void testIntegrationSuccessWithPartitionKeyDefaultSetting() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.assertValid();
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
@@ -107,7 +164,7 @@ public class PutKinesisStreamTestIT {
 
     @Test
     public void testIntegrationSuccessWithOutPartitionKey() throws Exception {
-        runner.setProperty(KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(KINESIS_STREAM_NAME, TEST_STREAM_NAME);
         runner.assertValid();
         runner.setProperty(KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
@@ -137,6 +194,5 @@ public class PutKinesisStreamTestIT {
         runner.run(1);
 
         runner.assertAllFlowFilesTransferred(REL_FAILURE, 1);
-
     }
 }
